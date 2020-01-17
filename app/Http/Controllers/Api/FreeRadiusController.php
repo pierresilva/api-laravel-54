@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Radcheck;
 
-class FreeRadiusController extends Controller
+class FreeRadiusController  extends Controller
 {
     //
     public function getUsers(Request $request) {
@@ -80,7 +80,7 @@ class FreeRadiusController extends Controller
                 'username' => $request->username,
                 'attribute' => 'User-Password',
                 'opt' => ':=',
-                'value' => str_random(10), // $request->value,
+                'value' => $request->value, // str_random(10),
             ]);
 
             $emailTo = '';
