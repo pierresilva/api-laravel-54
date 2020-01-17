@@ -16,7 +16,7 @@
 ```php
 <?php
     $radius_config = [
-        'radius_api' => 'http://api-laravel-54.test', // IP, ruta o URL del servidor de aplicación freeradius
+        'radius_api' => 'http://server/public/index.php', // IP, ruta o URL del servidor de aplicación freeradius
         'radius_db_host' => '172.16.32.133', // Dirección IP de la base de datos del servidor freeradius
         'radius_db_database' => 'radius' // Nombre de la base de datos del servidor freeradius
      ];
