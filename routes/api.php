@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
-use nusoap_client;
+use nusoap_client as NusoapClient;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,10 +18,10 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::get('radius/users', 'Api\FreeradiusController@getUsers');
-Route::get('radius/users/{username}', 'Api\FreeradiusController@getUser');
-Route::post('radius/users', 'Api\FreeradiusController@addUser');
-Route::delete('radius/users/{username}', 'Api\FreeradiusController@removeUser');
+Route::get('radius/users', 'Api\FreeRadiusController@getUsers');
+Route::get('radius/users/{username}', 'Api\FreeRadiusController@getUser');
+Route::post('radius/users', 'Api\FreeRadiusController@addUser');
+Route::delete('radius/users/{username}', 'Api\FreeRadiusController@removeUser');
 
 Route::get('databases', 'Api\DatabasesController@index');
 Route::post('databases', 'Api\DatabasesController@store');
@@ -34,7 +34,7 @@ Route::post('ach/test/banks', function (Request $request) {
     $method = $parameters['method'];
     unset($parameters['method']);
 
-    $client = new nusoap_client($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
+    $client = new NusoapClient($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
     $client->soap_defencoding = 'utf-8';
     $client->decode_utf8 = false;
 

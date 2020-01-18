@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Radcheck;
 
-class FreeRadiusController extends Controller
+class FreeRadiusController  extends Controller
 {
     //
     public function getUsers(Request $request) {
