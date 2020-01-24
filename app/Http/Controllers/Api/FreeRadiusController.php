@@ -80,7 +80,7 @@ class FreeRadiusController  extends Controller
                 'username' => $request->username,
                 'attribute' => 'User-Password',
                 'opt' => ':=',
-                'value' => str_random(10), // $request->value,
+                'value' => $request->value, // str_random(10),
             ]);
 
             $emailTo = '';

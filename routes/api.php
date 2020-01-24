@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
-use nusoap_client as NusoapClient;
+use nusoap_client;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,7 +21,7 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 Route::get('radius/users', 'Api\FreeRadiusController@getUsers');
 Route::get('radius/users/{username}', 'Api\FreeRadiusController@getUser');
 Route::post('radius/users', 'Api\FreeRadiusController@addUser');
-Route::delete('radius/users/{username}', 'Api\FreeRadiusController@removeUser');
+Route::post('radius/users/{username}/delete', 'Api\FreeRadiusController@removeUser');
 
 Route::get('databases', 'Api\DatabasesController@index');
 Route::post('databases', 'Api\DatabasesController@store');
@@ -34,7 +34,7 @@ Route::post('ach/test/banks', function (Request $request) {
     $method = $parameters['method'];
     unset($parameters['method']);
 
-    $client = new NusoapClient($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
+    $client = new nusoap_client($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
     $client->soap_defencoding = 'utf-8';
     $client->decode_utf8 = false;
 
@@ -49,10 +49,10 @@ Route::post('ach/test/banks', function (Request $request) {
     ], 200);
 });
 
-Route::get('soap/cr/hotels', 'Api\TestSoapController@getHotels');
-Route::get('soap/cr/rates/{hotelId?}', 'Api\TestSoapController@getRates');
-Route::get('soap/cr/rooms/{hotelId?}', 'Api\TestSoapController@getRooms');
-Route::get('soap/cr/portals/{hotelId?}', 'Api\TestSoapController@getPortals');
-Route::get('soap/cr/reservations/{startDate}/{endDate}/{hotelId}/{dlm?}', 'Api\TestSoapController@getReservations');
-Route::get('soap/cr/availability/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getAvailability');
-Route::any('soap/cr/modify-inventory', 'Api\TestSoapController@modifyInventory');
+Route::get('soap/cr-reservas/hotels', 'Api\TestSoapController@getHotels');
+Route::get('soap/cr-reservas/rates/{hotelId?}', 'Api\TestSoapController@getRates');
+Route::get('soap/cr-reservas/rooms/{hotelId?}', 'Api\TestSoapController@getRooms');
+Route::get('soap/cr-reservas/portals/{hotelId?}', 'Api\TestSoapController@getPortals');
+Route::get('soap/cr-reservas/reservations/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getReservations');
+Route::get('soap/cr-reservas/availability/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getAvailability');
+Route::post('soap/cr-reservas/modify-inventory', 'Api\TestSoapController@modifyInventory');
