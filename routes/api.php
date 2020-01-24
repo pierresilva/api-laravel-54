@@ -49,10 +49,10 @@ Route::post('ach/test/banks', function (Request $request) {
     ], 200);
 });
 
-Route::get('soap/cr-reservas/hotels', 'Api\TestSoapController@getHotels');
-Route::get('soap/cr-reservas/rates/{hotelId?}', 'Api\TestSoapController@getRates');
-Route::get('soap/cr-reservas/rooms/{hotelId?}', 'Api\TestSoapController@getRooms');
-Route::get('soap/cr-reservas/portals/{hotelId?}', 'Api\TestSoapController@getPortals');
-Route::get('soap/cr-reservas/reservations/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getReservations');
-Route::get('soap/cr-reservas/availability/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getAvailability');
-Route::post('soap/cr-reservas/modify-inventory', 'Api\TestSoapController@modifyInventory');
+Route::get('soap/cr/hotels', 'Api\TestSoapController@getHotels');
+Route::get('soap/cr/rates/{hotelId?}', 'Api\TestSoapController@getRates');
+Route::get('soap/cr/rooms/{hotelId?}', 'Api\TestSoapController@getRooms');
+Route::get('soap/cr/portals/{hotelId?}', 'Api\TestSoapController@getPortals');
+Route::get('soap/cr/reservations/{startDate}/{endDate}/{hotelId}/{dlm?}', 'Api\TestSoapController@getReservations');
+Route::get('soap/cr/availability/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getAvailability');
+Route::any('soap/cr/modify-inventory', 'Api\TestSoapController@modifyInventory');

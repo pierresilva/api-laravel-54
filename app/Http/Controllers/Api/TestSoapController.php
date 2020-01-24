@@ -2,79 +2,29 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\bookingEngine\bookingEngine;
 use Illuminate\Http\Request;
 use App\Http\Controllers\SoapController;
 use DateInterval;
 use DatePeriod;
 use DateTime;
-use SimpleXMLElement;
-use stdClass;
-
-use GuzzleHttp\Client;
 
 class TestSoapController extends SoapController
 {
-    //
+    private $bookingEngine;
 
-    private $xmlr;
-
-    private function getCrReservasRequest()
+    public function __construct(Request $request)
     {
-        $xmlr = new SimpleXMLElement("<Request></Request>");
-        $xmlr->addAttribute('apikey', config('cr_reservas.apyKey'));
-        $xmlr->addAttribute('userName', config('cr_reservas.userName'));
-        $xmlr->addAttribute('password', config('cr_reservas.password'));
-
-        return $xmlr;
-    }
-
-    private function makeCrReservasRequest()
-    {
-        $xmlr = $this->xmlr;
-
-        $soapRequest = new stdClass();
-        $soapRequest->xml = $xmlr->asXML();
-
-        $client = new Client([
-            'base_uri' => config('cr_reservas.url'),
-        ]);
-
-        $response = null;
-
-        try {
-            $response = $client->post(
-                config('cr_reservas.action'),
-                [
-                    'body'    => $soapRequest->xml,
-                    'headers' => [
-                        'Content-Type' => 'application/xml',
-                    ]
-                ]
-            );
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-                'error' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'url' => $client->getConfig(),
-                ]
-            ], 400);
+        if(!$request->bookingEngine) {
+            die('El parametro bookingEngine debe estar presente!');
         }
 
-        if ($response->getStatusCode() === 200) {
-            $xmlResponse = simplexml_load_string($response->getBody(), 'SimpleXMLElement', LIBXML_NOCDATA);
-            
-            $response = json_decode(json_encode((array) $xmlResponse, true), true);
-
-            if (isset($response['error'])) {
-                return response()->json(json_decode(json_encode((array) $xmlResponse, true)), 400);
-            }
-            return response()->json(json_decode(json_encode((array) $xmlResponse, true)));
-        } else {
-            $xmlResponse = simplexml_load_string($response->getBody(), 'SimpleXMLElement', LIBXML_NOCDATA);
-            return response()->json(json_decode(json_encode((array) $xmlResponse, true)), 400);
+        $class = 'App\\' . studly_case($request->bookingEngine) . '\\' . studly_case($request->bookingEngine);
+        if (!class_exists($class)) {
+            die("La clase {$class} no existe!");
         }
+
+        $this->bookingEngine = new $class();
     }
 
     /**
@@ -82,12 +32,12 @@ class TestSoapController extends SoapController
      */
     public function getHotels()
     {
-        $xmlr = $this->getCrReservasRequest();
-        $xmlr->addChild('getHotels');
+        $soapRequest = $this->bookingEngine->getHotels();
 
-        $this->xmlr = $xmlr;
-
-        return $this->makeCrReservasRequest();
+        if ($soapRequest['error']) {
+            return response()->json($soapRequest['data'], 400);
+        }
+        return response()->json($soapRequest['data']);
     }
 
     /** 
@@ -95,13 +45,12 @@ class TestSoapController extends SoapController
      */
     public function getRates($hotelId = null)
     {
-        $xmlr = $this->getCrReservasRequest();
+        $soapRequest = $this->bookingEngine->getRates($hotelId);
 
-        $xmlr->addChild('getRates')->addAttribute('hotelId', $hotelId ? $hotelId : config('cr_reservas.userName'));
-
-        $this->xmlr = $xmlr;
-
-        return $this->makeCrReservasRequest();
+        if ($soapRequest['error']) {
+            return response()->json($soapRequest['data'], 400);
+        }
+        return response()->json($soapRequest['data']);
     }
 
     /**
@@ -109,13 +58,12 @@ class TestSoapController extends SoapController
      */
     public function getRooms($hotelId = null)
     {
-        $xmlr = $this->getCrReservasRequest();
+        $soapRequest = $this->bookingEngine->getRooms($hotelId);
 
-        $xmlr->addChild('getRooms')->addAttribute('hotelId', $hotelId ? $hotelId : config('cr_reservas.userName'));
-
-        $this->xmlr = $xmlr;
-
-        return $this->makeCrReservasRequest();
+        if ($soapRequest['error']) {
+            return response()->json($soapRequest['data'], 400);
+        }
+        return response()->json($soapRequest['data']);
     }
 
     /**
@@ -123,35 +71,25 @@ class TestSoapController extends SoapController
      */
     public function getPortals($hotelId = null)
     {
-        $xmlr = $this->getCrReservasRequest();
+        $soapRequest = $this->bookingEngine->getPortals($hotelId);
 
-        $xmlr->addChild('getPortals')->addAttribute('hotelId', $hotelId ? $hotelId : config('cr_reservas.userName'));
-
-        $this->xmlr = $xmlr;
-
-        return $this->makeCrReservasRequest();
+        if ($soapRequest['error']) {
+            return response()->json($soapRequest['data'], 400);
+        }
+        return response()->json($soapRequest['data']);
     }
 
     /**
      * IThe reservations function let the client retrieve reservations from the RoomCloud local database.
      */
-    public function getReservations($startDate = null, $endDate = null, $hotelId = null)
+    public function getReservations($startDate = null, $endDate = null, $hotelId = null, $dlm = false)
     {
-        $sDate = $startDate ? $startDate : date('Y-m-d');
-        $eDate = $endDate ? $endDate : date('Y-m-d');
-        $xmlr = $this->getCrReservasRequest();
+        $soapRequest = $this->bookingEngine->getReservations($startDate, $endDate, $hotelId, $dlm);
 
-        $xmlr->addChild('reservations')->addAttribute('hotelId', $hotelId ? $hotelId : config('cr_reservas.userName'));
-        $reservations = $xmlr->addChild('reservations');
-        $reservations->addAttribute('hotelId', $hotelId ? $hotelId : config('cr_reservas.userName'));
-        // Get by creation date, omit for by checkin date
-        // $reservations->addAttribute('useDLM', 'true');
-        $reservations->addAttribute('startDate', $sDate);
-        $reservations->addAttribute('endDate', $eDate);
-
-        $this->xmlr = $xmlr;
-
-        return $this->makeCrReservasRequest();
+        if ($soapRequest['error']) {
+            return response()->json($soapRequest['data'], 400);
+        }
+        return response()->json($soapRequest['data']);
     }
 
     /**
@@ -162,23 +100,19 @@ class TestSoapController extends SoapController
         $sDate = $startDate ? $startDate : date('Y-m-d');
         $eDate = $endDate ? $endDate : date('Y-m-d');
 
-        $xmlr = $this->getCrReservasRequest();
+        $soapRequest = $this->bookingEngine->getAvailability($startDate, $endDate, $hotelId);
 
-        $view = $xmlr->addChild('view');
-        $view->addAttribute('hotelId', $hotelId ? $hotelId : config('cr_reservas.userName'));
-        $view->addAttribute('startDate', $sDate);
-        $view->addAttribute('endDate', $eDate);
-
-        $this->xmlr = $xmlr;
-
-        return $this->makeCrReservasRequest();
+        if ($soapRequest['error']) {
+            return response()->json($soapRequest['data'], 400);
+        }
+        return response()->json($soapRequest['data']);
     }
 
     public function modifyInventory(Request $request)
     {
         $sDate = $request->startDate ? $request->startDate : date('Y-m-d');
         $eDate = $request->endDate ? $request->endDate : date('Y-m-d');
-        $hotel = $request->hotelId ? $request->hotelId : config('cr_reservas.userName');
+        $hotel = $request->hotelId ? $request->hotelId : config('cm_reservas.userName');
         $room = $request->roomId;
         $quantity = $request->quantity;
 
