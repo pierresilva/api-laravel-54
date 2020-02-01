@@ -15,6 +15,7 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         //
         Commands\GetBookingEngineReservations::class,
+        Commands\ModifyBookingEngineInventory::class,
     ];
 
     /**
@@ -27,6 +28,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
+        $schedule->command('cr:get_reservations cm-reservas')->hourly();
     }
 
     /**

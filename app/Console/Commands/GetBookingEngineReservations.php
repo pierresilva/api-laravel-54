@@ -13,8 +13,7 @@ class GetBookingEngineReservations extends Command
      * @var string
      */
     protected $signature = 'cr:get_reservations
-                            {booking-engine : Código del motor de reservas.}
-                            {dlm : Fecha de última modificación}';
+                            {booking-engine : Código del motor de reservas.}';
 
     /**
      * The console command description.
@@ -44,12 +43,11 @@ class GetBookingEngineReservations extends Command
         $this->bookingEngine = new $class();
         //
         $this->info($this->argument('booking-engine'));
-        $this->info($this->argument('dlm'));
 
         $yesterday =  date('Y-m-d', strtotime("-1 days"));
         $today =  date('Y-m-d');
 
-        $reservations = $this->bookingEngine->getReservations($yesterday, $today, $hotelId = null, $dlm = true);
+        $reservations = $this->bookingEngine->getReservations($yesterday, $today, null, true);
 
         $this->bookingEngine->saveReservations($reservations);
     }

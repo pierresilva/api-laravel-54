@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\bookingEngine\bookingEngine;
+use App\Jobs\ModifyBookingEngineInventory;
 use Illuminate\Http\Request;
 use App\Http\Controllers\SoapController;
 use DateInterval;
@@ -116,6 +117,13 @@ class TestSoapController extends SoapController
         $room = $request->roomId;
         $quantity = $request->quantity;
 
+        $soapRequest = $this->bookingEngine->getAvailability($sDate, $eDate, $hotel, $room);
+
+        if ($soapRequest['error']) {
+            return response()->json($soapRequest['data'], 400);
+        }
+        return response()->json($soapRequest['data']);
+
         $xmlr = $this->getCrReservasRequest();
 
         $modify = $xmlr->addChild('modify');
@@ -154,5 +162,29 @@ class TestSoapController extends SoapController
         $this->xmlr = $xmlr;
 
         return $this->makeCrReservasRequest();
+    }
+
+    public function modifyInventoryByDatesAndRoom(Request $request, $startDate, $endDate, $roomTypeId, $oldStartDate = null, $oldEndDate = null)
+    {
+        $typeRoom = config( 'cm_reservas.rooms_lc.' . $roomTypeId);
+
+        if ($typeRoom) {
+
+            $job = (
+                new ModifyBookingEngineInventory($startDate, $endDate, $roomTypeId, $request->bookingEngine)
+            );
+
+            dispatch($job);
+
+            return response()->json([
+                'message' => 'OK',
+                'data' => null
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Esta habitación no sincroniza inventario.'
+        ]);
+
     }
 }

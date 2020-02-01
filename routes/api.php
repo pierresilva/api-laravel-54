@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
-use nusoap_client;
+use nusoap_client as NuSoapClient;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,7 +34,7 @@ Route::post('ach/test/banks', function (Request $request) {
     $method = $parameters['method'];
     unset($parameters['method']);
 
-    $client = new nusoap_client($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
+    $client = new NuSoapClient($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
     $client->soap_defencoding = 'utf-8';
     $client->decode_utf8 = false;
 
@@ -53,6 +53,9 @@ Route::get('soap/cr-reservas/hotels', 'Api\TestSoapController@getHotels');
 Route::get('soap/cr-reservas/rates/{hotelId?}', 'Api\TestSoapController@getRates');
 Route::get('soap/cr-reservas/rooms/{hotelId?}', 'Api\TestSoapController@getRooms');
 Route::get('soap/cr-reservas/portals/{hotelId?}', 'Api\TestSoapController@getPortals');
-Route::get('soap/cr-reservas/reservations/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getReservations');
+Route::get('soap/cr-reservas/reservations/{startDate?}/{endDate?}/{hotelId?}/{dlm?}', 'Api\TestSoapController@getReservations');
 Route::get('soap/cr-reservas/availability/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getAvailability');
-Route::post('soap/cr-reservas/modify-inventory', 'Api\TestSoapController@modifyInventory');
+Route::get('soap/cr-reservas/modify-inventory/{startDate}/{endDate}/{roomTypeId}/{oldStartDate?}/{oldEndDate?}', 'Api\TestSoapController@modifyInventoryByDatesAndRoom');
+Route::get('soap/cr-reservas/modify-inventory', 'Api\TestSoapController@modifyInventory');
+
+Route::get('soap/bamboo/availability/{startDate?}/{endDate?}/{hotelId?}', 'Api\TestSoapController@getBambooQuantityAvailability');

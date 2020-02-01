@@ -244,18 +244,20 @@ class CmReservas
 
         $tipDoc = collect(\DB::select("select * from tipdoc where detalle = 'CEDULA CIUDADANIA'"))->first();
 
+        if (!is_array($reservations)) {
+            $reservations = [
+                $reservations
+            ];
+        }
+
         foreach ($reservations as $reservation) {
+            $reservationJson = json_encode($reservation);
             $reservationAttributes = $reservation->{$attributesKey};
             $reservationRoom = $reservation->room->{$attributesKey};
             $dayPrices = [];
             $res = null;
+            // Servicio para obtener cambio de moneda
             $url = 'https://free.currconv.com/api/v7/convert?q=' . $reservationAttributes->currencycode . '_COP&compact=ultra&apiKey=495ed2da7dca68522b41';
-            $client = new \GuzzleHttp\Client();
-            $request = new \GuzzleHttp\Psr7\Request('GET', $url);
-
-            /*if ($reservationRoom->status != 4) {
-                break;
-            }*/
 
             if (isset($reservation->dayPrice)) {
                 foreach ($reservation->dayPrice as $dayPrice) {
@@ -274,7 +276,7 @@ class CmReservas
             $numres = collect(\DB::select('select MAX(numres)+1 as res from reserva limit 1'))->first();
 
             $dathot = collect(\DB::select("
-                select nit from dathot;
+                select nit, numrec from dathot;
             "))->first();
 
             $reservationExists = collect(\DB::select("
@@ -301,15 +303,121 @@ class CmReservas
                 $reservationAttributes->firstName $reservationAttributes->lastName
                 $reservationAttributes->telephone $reservationAttributes->city $reservationAttributes->country
             ";
-            // ToDo: Parametrizar ID forma de pago 'forpag', tipo garantia 'tipgar', tipo programa 'tippro'
+            // ToDo: Parametrizar ID forma de pago 'forpag', tipo garantia 'tipgar', tipo programa 'tippro' en config/cm_reservas.php
             $paymentType = config('cm_reservas.paymentType');
             $warrantyType = config('cm_reservas.warrantyType');
             $programType = config('cm_reservas.programType');
-            $json_data = json_encode((array) $reservation, true);
-            $query = "insert into reserva
-                (numres ,referencia ,tipdoc ,cedula, nit, numhab, tipres, codusu, fecres, feclle, fecsal, feclim, numadu, numnin, numinf, observacion, numpre, carta, habfij, solicitada, forpag, fecest, estado, tippro, tipgar, codven, tipseg, metadata)
-                values
-                ('$numres->res','cm-reservas {$reservationAttributes->id}', {$tipDoc->tipdoc},'0','{$nit}','$numhab->numhab','5','1',curdate(),'$reservationAttributes->checkin','$reservationAttributes->checkout' ,'$reservationAttributes->checkin','$reservationAttributes->adults','$reservationAttributes->children','0','$observacion','11','N','N','$reservationAttributes->firstName $reservationAttributes->lastName',{$paymentType},null,'G','{$programType}','{$warrantyType}','1', 'I', null);";
+            $json_data = json_encode((array)$reservation, true);
+            $queryReserva = "
+                    INSERT INTO reserva
+                    (numres ,referencia ,tipdoc ,cedula, nit, numhab, tipres, codusu, fecres, feclle, fecsal, feclim, numadu, numnin, numinf, observacion, numpre, carta, habfij, solicitada, forpag, fecest, estado, tippro, tipgar, codven, tipseg, metadata)
+                    VALUES
+                    ('$numres->res','cm-reservas {$reservationAttributes->id}', {$tipDoc->tipdoc},'0','{$nit}','$numhab->numhab','5','1',curdate(),'$reservationAttributes->checkin','$reservationAttributes->checkout' ,'$reservationAttributes->checkin','$reservationAttributes->adults','$reservationAttributes->children','0','$observacion','11','N','N','$reservationAttributes->firstName $reservationAttributes->lastName',{$paymentType},null,'G','{$programType}','{$warrantyType}','1', 'I', '{$reservationJson}');";
+            \DB::insert($queryReserva);
+            $codpla = config('cm_reservas.codpla');
+            $dayPriceCnt = 1;
+            foreach ($dayPrices as $dayPrice) {
+                $queryPlares = "
+                INSERT INTO plares
+                (numres, numpla, codpla, fecini, fecfin, pordes, tipdes, valornoche)
+                VALUES({$numres->res}, {$dayPriceCnt}, {$codpla}, '{$dayPrice->day}', '{$dayPrice->day}', 0, 'P', {$dayPrice->price});
+                ";
+                \DB::insert($queryPlares);
+                $dayPriceCnt++;
+            }
+            $queryReccaj = "
+            INSERT INTO reccaj
+            (numrec, cedula, nombre, direccion, ciudad, telefono, fecha, codcaj, codusu, codcar, codven, nota, estado)
+            VALUES({$dathot->numrec}, '0', '{$reservationAttributes->firstName} {$reservationAttributes->lastName}', '{$reservationAttributes->address}', '{$reservationAttributes->city}', '{$reservationAttributes->telephone}', CURRENT_DATE, 1, 1, 54, 0, 'Pago de reserva por cm_reservas.', 'A');
+            ";
+            \DB::insert($queryReccaj);
+
+            $queryDetrec = "
+            INSERT INTO detrec
+            (numrec, numero, forpag, numfor, fecven, ivarep, valorm, valor)
+            VALUES({$dathot->numrec}, 1, 1, 0, CURRENT_DATE, 0, 0, {$reservationAttributes->price});
+            ";
+            \DB::insert($queryDetrec);
+
+            $queryGarres = "
+            INSERT INTO garres
+            (numres, item, codusu, codcaj, fecha, codcar, total, numrec, numegr, estado)
+            VALUES({$numres->res}, 1, 1, 3, CURRENT_TIMESTAMP, 54, {$reservationAttributes->price}, {$dathot->numrec}, 0, 'A');
+            ";
+            \DB::insert($queryGarres);
+
+            $nNumrec = ($dathot->numrec + 1);
+            \DB::update("
+            UPDATE dathot
+            SET
+            numrec = {$nNumrec}
+            WHERE numrec = {$dathot->numrec};
+            ");
+
+            $queryNumfolio = "select MAX(numfol)+1 as fol from folio";
+
+            $numfolio = collect(\DB::select($queryNumfolio))->first();
+
+            $sqlFolio = "
+            INSERT INTO folio
+            (numfol, numres, codeve, tipdoc, cedula, nit, nitage, locpro, codpai, codciu, paides, locdes, ciudes, codtra, trasal, codmot, numhab, usuout, codusu, fecres, feclle, fecsal, hora, horsal, numadu, numnin, numinf, nota, notaayb, equipaje, placa, trahot, estpai, corregir, forpag, estado, walkin, tippro, tipgar, codven, idresweb, idcanal, idclifre)
+            VALUES(
+            {$numfolio->fol}, 
+            {$numres->res}, 
+            0,
+            {$tipDoc->tipdoc}, 
+            '0',
+            '0', 
+            '0', 
+            127591, 
+            null, 
+            null, 
+            null, 
+            129499, 
+            null, 
+            0, 
+            0, 
+            null, 
+            '$numhab->numhab', 
+            null, 
+            null, 
+            '{$reservationAttributes->dlm}', 
+            '{$reservationAttributes->checkin}', 
+            '{$reservationAttributes->checkout}', 
+            null, 
+            null, 
+            1, 
+            0, 
+            0, 
+            'FOLIO CREADO PARA GARANTIZAR RESERVA EN LINEA CM_RESERVAS', 
+            '', 
+            'N', 
+            null, 
+            'N', 
+            null, 
+            'N', 
+            'N',
+            null, 
+            'O', 
+            'A', 
+            '', 
+            '', 
+            0, 
+            null,
+            null, 
+            null
+            );
+            ";
+
+            \DB::insert($sqlFolio);
+
+            $queryValcar = "
+                INSERT INTO valcar
+                (numfol, numcue, item, codusu, codcaj, fecha, cantidad, codcar, cladoc, numdoc, codpla, valor, iva, impo, valser, valter, total, estado, oldfol, movcor)
+                VALUES({$numfolio->fol}, 1, 1, 3, 7, CURRENT_TIMESTAMP, 1, 54, 'RC', '2109', null, {$reservationAttributes->price}, 0, null, 0, 0, {$reservationAttributes->price}, 'A', null, 'N');
+            ";
+
+            \DB::insert($queryValcar);
 
             $period = new DatePeriod(
                 new DateTime($reservationAttributes->checkin),
@@ -323,31 +431,6 @@ class CmReservas
                 $datesToCheck[] = $value->format('Y-m-d');
             }
 
-            \DB::beginTransaction();
-            try {
-                \DB::insert($query);
-            } catch (\Exception $exception) {
-                \DB::rollBack();
-                dd($exception->getMessage(), $exception->getFile(), $exception->getLine());
-                return [
-                    'error' => true,
-                    'message' => $exception->getMessage(),
-                    'data' => [
-                        'file' => $exception->getFile(),
-                        'line' => $exception->getLine(),
-                        'previous' => $exception->getPrevious(),
-                        'trace' => $exception->getTraceAsString(),
-                    ]
-                ];
-            }
-            \DB::commit();
-            $promise = $client->sendAsync($request)->then(function ($response) use ($reservationAttributes) {
-                $this->currencyValue = $response->getBody();
-                $pesos = json_decode( $response->getBody() )->{$reservationAttributes->currencycode . '_COP'};
-
-                \DB::update();
-            });
-            $promise->wait();
             $availabilities = [];
             foreach ($datesToCheck as $dateToCheck) {
                 $availability = $this->getBambooQuantityAvailability($dateToCheck, $dateToCheck, $roomClass);
@@ -358,12 +441,14 @@ class CmReservas
             foreach ($availabilities as $availability) {
                 $modifies[] = $this->modifyInventory($availability['date'], $availability['date'], $availability['class'], null, $availability['rooms']);
             }
+
         }
     }
 
 
     public function getBambooAvailability($reservationAttributes, $roomClass)
     {
+        \DB::setDefaultConnection('hhotel5');
         $roomsOccupied = [];
 
         $roomsBlocked = collect(\DB::select("
@@ -383,7 +468,7 @@ class CmReservas
                 SELECT reserva.numres, reserva.numhab, reserva.estado, habitacion.codcla
                 FROM `reserva`
                 INNER JOIN habitacion ON reserva.numhab = habitacion.numhab
-                WHERE reserva.feclle <= '$reservationAttributes->checkout' AND reserva.fecsal >= '$reservationAttributes->checkin'
+                WHERE reserva.feclle < '$reservationAttributes->checkout' AND reserva.fecsal > '$reservationAttributes->checkin'
                 AND reserva.estado IN ('P','G')
                 AND habitacion.codcla = {$roomClass}
             "));
@@ -397,7 +482,7 @@ class CmReservas
                 FROM `reserva`
                 INNER JOIN habitacion ON reserva.numhab = habitacion.numhab
                 INNER JOIN folio ON reserva.numhab = folio.numres
-                WHERE reserva.feclle <= '$reservationAttributes->checkout' AND reserva.fecsal >= '$reservationAttributes->checkin'
+                WHERE reserva.feclle < '$reservationAttributes->checkout' AND reserva.fecsal > '$reservationAttributes->checkin'
                 AND reserva.estado IN ('H')
                 AND folio.estado IN ('I')
                 AND habitacion.codcla = {$roomClass}
@@ -424,9 +509,10 @@ class CmReservas
      */
     public function getBambooQuantityAvailability($in, $out, $roomClass)
     {
+        // \DB::connection('hhotel5');
         $roomsOccupied = [];
 
-        $roomsBlocked = collect(\DB::select("
+        $roomsBlocked = collect(\DB::connection('hhotel5')->select("
                 SELECT blohab.numhab
                 FROM blohab
                 INNER JOIN habitacion ON blohab.numhab = habitacion.numhab
@@ -439,11 +525,11 @@ class CmReservas
             $roomsOccupied[] = $roomBlocked->numhab;
         }
 
-        $roomsReserved = collect(\DB::select("
+        $roomsReserved = collect(\DB::connection('hhotel5')->select("
                 SELECT reserva.numres, reserva.numhab, reserva.estado, habitacion.codcla
-                FROM `reserva`
+                FROM reserva
                 INNER JOIN habitacion ON reserva.numhab = habitacion.numhab
-                WHERE reserva.feclle <= '$out' AND reserva.fecsal >= '$in'
+                WHERE reserva.feclle <= '$out' AND reserva.fecsal > '$in'
                 AND reserva.estado IN ('P','G')
                 AND habitacion.codcla = {$roomClass}
             "));
@@ -452,13 +538,11 @@ class CmReservas
             $roomsOccupied[] = $roomReserved->numhab;
         }
 
-        $roomsHosted = collect(\DB::select("
-                SELECT reserva.numres, reserva.numhab, reserva.estado, habitacion.codcla, folio.numfol, folio.estado
-                FROM `reserva`
-                INNER JOIN habitacion ON reserva.numhab = habitacion.numhab
-                INNER JOIN folio ON reserva.numhab = folio.numres
-                WHERE reserva.feclle <= '$out' AND reserva.fecsal >= '$in'
-                AND reserva.estado IN ('H')
+        $roomsHosted = collect(\DB::connection('hhotel5')->select("
+                SELECT folio.numres, folio.numhab, folio.estado, habitacion.codcla, folio.numfol
+                FROM folio
+                INNER JOIN habitacion ON folio.numhab = habitacion.numhab
+                WHERE folio.feclle <= '$out' AND folio.fecsal > '$in'
                 AND folio.estado IN ('I')
                 AND habitacion.codcla = {$roomClass}
             "));
@@ -469,7 +553,7 @@ class CmReservas
 
         $roomsOccupied = implode('\',\'', $roomsOccupied);
 
-        $numhabs = collect(\DB::select("
+        $numhabs = collect(\DB::connection('hhotel5')->select("
             select habitacion.numhab, habitacion.numcam
             from habitacion 
             where habitacion.numhab not in ('{$roomsOccupied}')
@@ -479,6 +563,7 @@ class CmReservas
         $availability = [
             'rooms' => 0,
             'beds' => 0,
+            'occupied' => '\'' . $roomsOccupied . '\'',
             'class' => config('cm_reservas.rooms_lc.' . $roomClass),
         ];
 
