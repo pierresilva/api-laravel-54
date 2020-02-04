@@ -12,7 +12,8 @@
         "laravel/framework": "5.4.*",
         "laravel/passport": "~4.0",
         "laravel/tinker": "~1.0",
-        "ritey/nusoap": "^0.9.5"
+        "ritey/nusoap": "^0.9.5",
+        "ext-curl": "*"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^2.4",

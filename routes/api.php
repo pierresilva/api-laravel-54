@@ -49,6 +49,9 @@ Route::post('ach/test/banks', function (Request $request) {
     ], 200);
 });
 
+Route::get('soap/test', 'SoapTestController@show');
+Route::get('soap/tests', 'SoapTestController@testing');
+
 Route::get('soap/cr-reservas/hotels', 'Api\TestSoapController@getHotels');
 Route::get('soap/cr-reservas/rates/{hotelId?}', 'Api\TestSoapController@getRates');
 Route::get('soap/cr-reservas/rooms/{hotelId?}', 'Api\TestSoapController@getRooms');

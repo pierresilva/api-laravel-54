@@ -56,7 +56,7 @@ return [
 
         'hhotel5' => [
             'driver' => 'mysql',
-            'host' => '192.168.0.17',
+            'host' => '192.168.0.26',
             'port' => '3306',
             'database' => 'hentrevilla',
             'username' => 'root',

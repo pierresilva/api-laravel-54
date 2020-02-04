@@ -396,16 +396,15 @@ class CmReservas
             'N', 
             null, 
             'N', 
-            'N',
-            null, 
+            null,
             'O', 
             'A', 
             '', 
             '', 
             0, 
             null,
-            null, 
-            null
+            null,
+            null           
             );
             ";
 
