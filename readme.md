@@ -62,7 +62,7 @@ return [
     'apyKey' => 'bamboo_900hty5768fj5o6msds4',
     'hotel_id' => 3885,
     'userName' => '3885',
-    'password' => 'Bamboo2019',
+    'password' => 'homes',
     'action' => '/be/search/xml.jsp',
     'default_rate' => '766', // id del cargo a aplicar
     'rooms_cl' => [ // habitaciones id de cm reservas, id de clase bamboo
