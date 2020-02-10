@@ -332,7 +332,7 @@ Obtiene las reservas generadas en los canales de reservas y las almacena en bamb
 
 Actualiza el inventario en el canal de reservas desde una fecha inicial hasta una fecha final por el código de la clase de habitación
 
-##Tareas programadas
+## Tareas programadas
 Configurar la tarea programada (cronjob):
 
 `* * * * * php /ruta-a-este-proyecto/artisan schedule:run >> /dev/null 2>&1`
