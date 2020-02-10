@@ -251,114 +251,122 @@ class CmReservas
         }
 
         foreach ($reservations as $reservation) {
-            $reservationJson = json_encode($reservation);
-            $reservationAttributes = $reservation->{$attributesKey};
-            $reservationRoom = $reservation->room->{$attributesKey};
-            $dayPrices = [];
-            $res = null;
-            // Servicio para obtener cambio de moneda
-            $url = 'https://free.currconv.com/api/v7/convert?q=' . $reservationAttributes->currencycode . '_COP&compact=ultra&apiKey=495ed2da7dca68522b41';
+            if (!is_array($reservation->room)) {
+                $reservation->room = [
+                    $reservation->room
+                ];
+            }
 
-            if (isset($reservation->dayPrice)) {
-                foreach ($reservation->dayPrice as $dayPrice) {
-                    $dayPrices[] = $dayPrice->{$attributesKey};
+            foreach ($reservation->room as $room) {
+                $reservationJson = json_encode($reservation);
+                $reservationAttributes = $reservation->{$attributesKey};
+                $reservationRoom = $room->{$attributesKey};
+
+                $dayPrices = [];
+                $res = null;
+                // Servicio para obtener cambio de moneda
+                $url = 'https://free.currconv.com/api/v7/convert?q=' . $reservationAttributes->currencycode . '_COP&compact=ultra&apiKey=495ed2da7dca68522b41';
+
+                if (isset($reservation->dayPrice)) {
+                    foreach ($reservation->dayPrice as $dayPrice) {
+                        $dayPrices[] = $dayPrice->{$attributesKey};
+                    }
                 }
-            }
 
-            $roomClasses = config('cm_reservas.rooms_cl');
+                $roomClasses = config('cm_reservas.rooms_cl');
 
-            if (!isset($roomClasses[$reservationRoom->id])) {
-                break;
-            }
+                if (!isset($roomClasses[$reservationRoom->id])) {
+                    break;
+                }
 
-            $roomClass = config('cm_reservas.rooms_cl')[$reservationRoom->id];
+                $roomClass = config('cm_reservas.rooms_cl')[$reservationRoom->id];
 
-            $numres = collect(\DB::select('select MAX(numres)+1 as res from reserva limit 1'))->first();
+                $numres = collect(\DB::select('select MAX(numres)+1 as res from reserva limit 1'))->first();
 
-            $dathot = collect(\DB::select("
+                $dathot = collect(\DB::select("
                 select nit, numrec from dathot;
-            "))->first();
+                "))->first();
 
-            $reservationExists = collect(\DB::select("
-                select numres, referencia from reserva where referencia = 'cm-reservas {$reservationAttributes->id}'
-            "))->first();
+                $reservationExists = collect(\DB::select("
+                select numres, referencia from reserva where referencia = 'cm-reservas {$reservationAttributes->id} {$reservationRoom->id}'
+                "))->first();
 
-            if ($reservationExists) {
-                break;
-            }
+                if ($reservationExists) {
+                    break;
+                }
 
-            $nit = explode('.', $dathot->nit);
-            $nit = implode('', $nit);
-            $nit = explode('-', $nit);
-            $nit = $nit[0];
+                $nit = explode('.', $dathot->nit);
+                $nit = implode('', $nit);
+                $nit = explode('-', $nit);
+                $nit = $nit[0];
 
-            $numhab = $this->getBambooAvailability($reservationAttributes, $roomClass);
+                $numhab = $this->getBambooAvailability($reservationAttributes, $roomClass);
 
-            if (!$numhab) {
-                break;
-            }
+                if (!$numhab) {
+                    break;
+                }
 
-            $observacion = "
+                $observacion = "
                 cm-reservas {$reservationAttributes->id}
                 $reservationAttributes->firstName $reservationAttributes->lastName
                 $reservationAttributes->telephone $reservationAttributes->city $reservationAttributes->country
-            ";
-            // ToDo: Parametrizar ID forma de pago 'forpag', tipo garantia 'tipgar', tipo programa 'tippro' en config/cm_reservas.php
-            $paymentType = config('cm_reservas.paymentType');
-            $warrantyType = config('cm_reservas.warrantyType');
-            $programType = config('cm_reservas.programType');
-            $json_data = json_encode((array)$reservation, true);
-            $queryReserva = "
+                ";
+                // ToDo: Parametrizar ID forma de pago 'forpag', tipo garantia 'tipgar', tipo programa 'tippro' en config/cm_reservas.php
+                $paymentType = config('cm_reservas.paymentType');
+                $warrantyType = config('cm_reservas.warrantyType');
+                $programType = config('cm_reservas.programType');
+                $json_data = json_encode((array)$reservation, true);
+                $queryReserva = "
                     INSERT INTO reserva
                     (numres ,referencia ,tipdoc ,cedula, nit, numhab, tipres, codusu, fecres, feclle, fecsal, feclim, numadu, numnin, numinf, observacion, numpre, carta, habfij, solicitada, forpag, fecest, estado, tippro, tipgar, codven, tipseg, metadata)
                     VALUES
-                    ('$numres->res','cm-reservas {$reservationAttributes->id}', {$tipDoc->tipdoc},'0','{$nit}','$numhab->numhab','5','1',curdate(),'$reservationAttributes->checkin','$reservationAttributes->checkout' ,'$reservationAttributes->checkin','$reservationAttributes->adults','$reservationAttributes->children','0','$observacion','11','N','N','$reservationAttributes->firstName $reservationAttributes->lastName',{$paymentType},null,'G','{$programType}','{$warrantyType}','1', 'I', '{$reservationJson}');";
-            \DB::insert($queryReserva);
-            $codpla = config('cm_reservas.codpla');
-            $dayPriceCnt = 1;
-            foreach ($dayPrices as $dayPrice) {
-                $queryPlares = "
+                    ('$numres->res','cm-reservas {$reservationAttributes->id} {$reservationRoom->id}', {$tipDoc->tipdoc},'0','{$nit}','$numhab->numhab','5','1',curdate(),'$reservationAttributes->checkin','$reservationAttributes->checkout' ,'$reservationAttributes->checkin','$reservationAttributes->adults','$reservationAttributes->children','0','$observacion','11','N','N','$reservationAttributes->firstName $reservationAttributes->lastName',{$paymentType},null,'G','{$programType}','{$warrantyType}','1', 'I', '{$reservationJson}');";
+                \DB::insert($queryReserva);
+                $codpla = config('cm_reservas.codpla');
+                $dayPriceCnt = 1;
+                foreach ($dayPrices as $dayPrice) {
+                    $queryPlares = "
                 INSERT INTO plares
                 (numres, numpla, codpla, fecini, fecfin, pordes, tipdes, valornoche)
                 VALUES({$numres->res}, {$dayPriceCnt}, {$codpla}, '{$dayPrice->day}', '{$dayPrice->day}', 0, 'P', {$dayPrice->price});
                 ";
-                \DB::insert($queryPlares);
-                $dayPriceCnt++;
-            }
-            $queryReccaj = "
+                    \DB::insert($queryPlares);
+                    $dayPriceCnt++;
+                }
+                $queryReccaj = "
             INSERT INTO reccaj
             (numrec, cedula, nombre, direccion, ciudad, telefono, fecha, codcaj, codusu, codcar, codven, nota, estado)
             VALUES({$dathot->numrec}, '0', '{$reservationAttributes->firstName} {$reservationAttributes->lastName}', '{$reservationAttributes->address}', '{$reservationAttributes->city}', '{$reservationAttributes->telephone}', CURRENT_DATE, 1, 1, 54, 0, 'Pago de reserva por cm_reservas.', 'A');
             ";
-            \DB::insert($queryReccaj);
+                \DB::insert($queryReccaj);
 
-            $queryDetrec = "
+                $queryDetrec = "
             INSERT INTO detrec
             (numrec, numero, forpag, numfor, fecven, ivarep, valorm, valor)
             VALUES({$dathot->numrec}, 1, 1, 0, CURRENT_DATE, 0, 0, {$reservationAttributes->price});
             ";
-            \DB::insert($queryDetrec);
+                \DB::insert($queryDetrec);
 
-            $queryGarres = "
+                $queryGarres = "
             INSERT INTO garres
             (numres, item, codusu, codcaj, fecha, codcar, total, numrec, numegr, estado)
             VALUES({$numres->res}, 1, 1, 3, CURRENT_TIMESTAMP, 54, {$reservationAttributes->price}, {$dathot->numrec}, 0, 'A');
             ";
-            \DB::insert($queryGarres);
+                \DB::insert($queryGarres);
 
-            $nNumrec = ($dathot->numrec + 1);
-            \DB::update("
+                $nNumrec = ($dathot->numrec + 1);
+                \DB::update("
             UPDATE dathot
             SET
             numrec = {$nNumrec}
             WHERE numrec = {$dathot->numrec};
             ");
 
-            $queryNumfolio = "select MAX(numfol)+1 as fol from folio";
+                $queryNumfolio = "select MAX(numfol)+1 as fol from folio";
 
-            $numfolio = collect(\DB::select($queryNumfolio))->first();
+                $numfolio = collect(\DB::select($queryNumfolio))->first();
 
-            $sqlFolio = "
+                $sqlFolio = "
             INSERT INTO folio
             (numfol, numres, codeve, tipdoc, cedula, nit, nitage, locpro, codpai, codciu, paides, locdes, ciudes, codtra, trasal, codmot, numhab, usuout, codusu, fecres, feclle, fecsal, hora, horsal, numadu, numnin, numinf, nota, notaayb, equipaje, placa, trahot, estpai, corregir, forpag, estado, walkin, tippro, tipgar, codven, idresweb, idcanal, idclifre)
             VALUES(
@@ -408,37 +416,38 @@ class CmReservas
             );
             ";
 
-            \DB::insert($sqlFolio);
+                \DB::insert($sqlFolio);
 
-            $queryValcar = "
+                $queryValcar = "
                 INSERT INTO valcar
                 (numfol, numcue, item, codusu, codcaj, fecha, cantidad, codcar, cladoc, numdoc, codpla, valor, iva, impo, valser, valter, total, estado, oldfol, movcor)
                 VALUES({$numfolio->fol}, 1, 1, 3, 7, CURRENT_TIMESTAMP, 1, 54, 'RC', '2109', null, {$reservationAttributes->price}, 0, null, 0, 0, {$reservationAttributes->price}, 'A', null, 'N');
             ";
 
-            \DB::insert($queryValcar);
+                \DB::insert($queryValcar);
 
-            $period = new DatePeriod(
-                new DateTime($reservationAttributes->checkin),
-                new DateInterval('P1D'),
-                new DateTime($reservationAttributes->checkout)
-            );
+                $period = new DatePeriod(
+                    new DateTime($reservationAttributes->checkin),
+                    new DateInterval('P1D'),
+                    new DateTime($reservationAttributes->checkout)
+                );
 
-            $datesToCheck = [];
+                $datesToCheck = [];
 
-            foreach ($period as $key => $value) {
-                $datesToCheck[] = $value->format('Y-m-d');
-            }
+                foreach ($period as $key => $value) {
+                    $datesToCheck[] = $value->format('Y-m-d');
+                }
 
-            $availabilities = [];
-            foreach ($datesToCheck as $dateToCheck) {
-                $availability = $this->getBambooQuantityAvailability($dateToCheck, $dateToCheck, $roomClass);
-                $availability['date'] = $dateToCheck;
-                $availabilities[] = $availability;
-            }
-            $modifies = [];
-            foreach ($availabilities as $availability) {
-                $modifies[] = $this->modifyInventory($availability['date'], $availability['date'], $availability['class'], null, $availability['rooms']);
+                $availabilities = [];
+                foreach ($datesToCheck as $dateToCheck) {
+                    $availability = $this->getBambooQuantityAvailability($dateToCheck, $dateToCheck, $roomClass);
+                    $availability['date'] = $dateToCheck;
+                    $availabilities[] = $availability;
+                }
+                $modifies = [];
+                foreach ($availabilities as $availability) {
+                    $modifies[] = $this->modifyInventory($availability['date'], $availability['date'], $availability['class'], null, $availability['rooms']);
+                }
             }
 
         }
