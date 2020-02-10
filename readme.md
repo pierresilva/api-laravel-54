@@ -251,14 +251,14 @@ NULL
     "message": "Usuario eliminado!"
 }
 ```
-#Rest API Aplicación Reservas por Central de Reservas
+# Rest API Aplicación Reservas por Central de Reservas
 Agregar el campo `metadata` a la tabla `reserva`
 ```sql
 ALTER TABLE reserva ADD metadata LONGTEXT NULL;
 ```
 Agregar el campo `valornoche` a la tabla `plares`
 ```sql
-ALTER TABLE plares ADD valorniche INTEGER NULL;
+ALTER TABLE plares ADD valornoche INTEGER NULL;
 ```
 
 Configurar la conexión `hhotel5` en `config/database.php` apuntando a la base de datos de bamboo. *Ejemplo*:
@@ -279,7 +279,7 @@ Configurar la conexión `hhotel5` en `config/database.php` apuntando a la base d
 ],
 ```
 
-###CM Reservas
+### CM Reservas
 
 Configurar en Bamboo los datos del WebService en `hotel5\app\clases\ReservationsChannel.php`. *Ejemplo*:
 
@@ -318,7 +318,7 @@ return [
 ];
 ```
 
-##Comandos
+## Comandos
 
 **Obtener Reservas:**
 
