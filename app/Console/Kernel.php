@@ -28,7 +28,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
-        $schedule->command('cr:get_reservations cm-reservas')->hourly();
+        $schedule->command('cr:get_reservations cm-reservas')->everyFiveMinutes();
 		
         // start the queue daemon, if its not running
         if ( !$this->osProcessIsRunning('queue:work') ) {
