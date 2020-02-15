@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
-use nusoap_client;
+use nusoap_client as Nusoap;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,7 +34,7 @@ Route::post('ach/test/banks', function (Request $request) {
     $method = $parameters['method'];
     unset($parameters['method']);
 
-    $client = new nusoap_client($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
+    $client = new Nusoap($parameters['wsUrl'] . '?enc=' . $parameters['enc'],'wsdl');
     $client->soap_defencoding = 'utf-8';
     $client->decode_utf8 = false;
 
