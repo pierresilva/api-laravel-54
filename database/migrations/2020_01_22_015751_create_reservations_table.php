@@ -26,7 +26,7 @@ class CreateReservationsTable extends Migration
             $table->date('checkout')->nullable()->comment('Fecha de salida');
             $table->double('price', 10, 2)->nullable()->comment('Precio total de la reserva');
             $table->string('currency')->nullable()->comment('Código de la moneda');
-            $table->json('metadata')->nullable()->comment('Meta data completa de la reserva del booking engine');
+            $table->longText('metadata')->nullable()->comment('Meta data completa de la reserva del booking engine');
             $table->string('status')->nullable()->comment('Estado de la reserva');
             $table->timestamps();
         });
